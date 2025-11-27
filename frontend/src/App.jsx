@@ -13,6 +13,7 @@ const App = () => {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [detectedRegion, setDetectedRegion] = useState(null);
   const [detectedHumFrequency, setDetectedHumFrequency] = useState(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
 
   // Auto-detect power frequency based on timezone/location
   useEffect(() => {
@@ -104,6 +105,42 @@ const App = () => {
     }
   };
 
+  // Analyze audio to detect hum frequency
+  const analyzeAudio = useCallback(
+    async (file) => {
+      if (humFrequency !== "auto") return; // Only analyze if auto mode
+
+      setIsAnalyzing(true);
+      try {
+        const formData = new FormData();
+        formData.append("file", file);
+
+        const response = await fetch("http://localhost:5000/api/detect-hum", {
+          method: "POST",
+          body: formData,
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.detectedFrequency) {
+            setDetectedHumFrequency(data.detectedFrequency);
+            setSuccessMessage(
+              `Detected ${data.detectedFrequency} Hz hum in audio`
+            );
+          } else {
+            setSuccessMessage("No hum detected - audio appears clean");
+          }
+        }
+      } catch (err) {
+        console.error("Analysis error:", err);
+        // Don't show error - analysis is optional
+      } finally {
+        setIsAnalyzing(false);
+      }
+    },
+    [humFrequency]
+  );
+
   const handleFileChange = useCallback(
     (event) => {
       const file = event.target.files[0];
@@ -114,6 +151,7 @@ const App = () => {
           setError(null);
           setSuccessMessage(null);
           setUploadProgress(0);
+          setDetectedHumFrequency(null);
 
           if (originalAudioUrl) URL.revokeObjectURL(originalAudioUrl);
           if (processedAudioUrl) URL.revokeObjectURL(processedAudioUrl);
@@ -122,7 +160,9 @@ const App = () => {
           setOriginalAudioUrl(url);
           setProcessedAudioUrl(null);
           setProcessedAudioData(null);
-          setSuccessMessage(`File "${file.name}" loaded successfully`);
+
+          // Analyze audio if in auto mode
+          analyzeAudio(file);
         } catch (err) {
           setError(err.message);
           setSelectedFile(null);
@@ -132,12 +172,21 @@ const App = () => {
         }
       }
     },
-    [originalAudioUrl, processedAudioUrl]
+    [originalAudioUrl, processedAudioUrl, analyzeAudio]
   );
 
-  const handleFrequencyChange = useCallback((freq) => {
-    setHumFrequency(freq);
-  }, []);
+  const handleFrequencyChange = useCallback(
+    (freq) => {
+      setHumFrequency(freq);
+      setDetectedHumFrequency(null); // Clear detection when manually changed
+
+      // If switching to auto and file is loaded, analyze it
+      if (freq === "auto" && selectedFile) {
+        analyzeAudio(selectedFile);
+      }
+    },
+    [selectedFile, analyzeAudio]
+  );
 
   // Handle drag and drop
   const handleDragOver = useCallback((e) => {
@@ -169,6 +218,7 @@ const App = () => {
           setError(null);
           setSuccessMessage(null);
           setUploadProgress(0);
+          setDetectedHumFrequency(null);
 
           if (originalAudioUrl) URL.revokeObjectURL(originalAudioUrl);
           if (processedAudioUrl) URL.revokeObjectURL(processedAudioUrl);
@@ -177,7 +227,9 @@ const App = () => {
           setOriginalAudioUrl(url);
           setProcessedAudioUrl(null);
           setProcessedAudioData(null);
-          setSuccessMessage(`File "${file.name}" loaded successfully`);
+
+          // Analyze audio if in auto mode
+          analyzeAudio(file);
         } catch (err) {
           setError(err.message);
           setSelectedFile(null);
@@ -186,7 +238,7 @@ const App = () => {
         }
       }
     },
-    [originalAudioUrl, processedAudioUrl]
+    [originalAudioUrl, processedAudioUrl, analyzeAudio]
   );
 
   const base64ToBlob = (base64, mimeType) => {
@@ -453,7 +505,31 @@ const App = () => {
                 <label className="text-sm font-medium text-neutral-700">
                   Hum Frequency
                 </label>
-                {detectedHumFrequency && (
+                {isAnalyzing && (
+                  <span className="text-xs text-blue-600 flex items-center gap-1">
+                    <svg
+                      className="animate-spin h-3 w-3"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="3"
+                      />
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      />
+                    </svg>
+                    Identifying Hz...
+                  </span>
+                )}
+                {!isAnalyzing && detectedHumFrequency && (
                   <span className="text-xs text-green-600 flex items-center gap-1">
                     <svg
                       className="w-3 h-3"

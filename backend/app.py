@@ -349,6 +349,62 @@ def health_check():
     """Health check endpoint."""
     return jsonify({'status': 'ok', 'message': 'Audio processing API is running'})
 
+@app.route('/api/detect-hum', methods=['POST'])
+def detect_hum():
+    """
+    Analyze audio file and detect hum frequency without processing.
+    
+    Expects:
+        - file: Audio file (multipart/form-data)
+    
+    Returns:
+        JSON with detected frequency or null
+    """
+    try:
+        # Validate file upload
+        if 'file' not in request.files:
+            return jsonify({'error': 'No file uploaded'}), 400
+        
+        file = request.files['file']
+        
+        if file.filename == '':
+            return jsonify({'error': 'No file selected'}), 400
+        
+        if not is_allowed_file(file.filename):
+            return jsonify({'error': f'File type not supported. Allowed: {", ".join(ALLOWED_EXTENSIONS)}'}), 400
+        
+        # Read file data
+        file_data = file.read()
+        
+        if len(file_data) > MAX_FILE_SIZE:
+            return jsonify({'error': 'File too large. Maximum size: 50MB'}), 400
+        
+        # Get file extension
+        file_extension = file.filename.rsplit('.', 1)[1].lower()
+        
+        # Load audio file
+        audio_data, sample_rate = load_audio_file(file_data, file_extension)
+        
+        # Detect hum frequency
+        detected_freq = detect_hum_frequency(audio_data, sample_rate)
+        
+        if detected_freq:
+            message = f'Detected {detected_freq} Hz power line hum'
+        else:
+            message = 'No significant hum detected'
+        
+        return jsonify({
+            'success': True,
+            'detectedFrequency': detected_freq,
+            'message': message
+        })
+    
+    except Exception as e:
+        if DEBUG_MODE:
+            import traceback
+            traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
 
 if __name__ == '__main__':
     print("=" * 60)
