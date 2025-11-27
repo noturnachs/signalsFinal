@@ -11,6 +11,49 @@ const App = () => {
   const [processedAudioData, setProcessedAudioData] = useState(null);
   const [successMessage, setSuccessMessage] = useState(null);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [detectedRegion, setDetectedRegion] = useState(null);
+
+  // Auto-detect power frequency based on timezone/location
+  useEffect(() => {
+    const detectFrequency = () => {
+      // Get timezone
+      const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+      // 60Hz regions
+      const hz60Regions = [
+        // Americas
+        "America/",
+        "US/",
+        "Canada/",
+        "Mexico/",
+        "Brazil/",
+        "Colombia/",
+        "Venezuela/",
+        // Asia (60 Hz countries)
+        "Asia/Tokyo", // Japan
+        "Asia/Seoul", // South Korea
+        "Asia/Taipei", // Taiwan
+        "Asia/Manila", // Philippines (60 Hz!)
+        "Asia/Riyadh", // Saudi Arabia
+        "Asia/Kuwait", // Kuwait
+        "Pacific/Guam", // Guam
+        "Pacific/Saipan", // Northern Mariana Islands
+      ];
+
+      // Check if timezone matches 60Hz region
+      const is60Hz = hz60Regions.some((region) => timezone.startsWith(region));
+
+      if (is60Hz) {
+        setHumFrequency(60);
+        setDetectedRegion("60 Hz (your region)");
+      } else {
+        setHumFrequency(50);
+        setDetectedRegion("50 Hz (your region)");
+      }
+    };
+
+    detectFrequency();
+  }, []);
 
   // Refs for managing requests
   const abortControllerRef = useRef(null);
@@ -391,9 +434,29 @@ const App = () => {
 
           {/* Controls Section */}
           <div className="mb-5">
-            <label className="block text-sm font-medium text-slate-700 mb-2">
-              Power Line Frequency
-            </label>
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-sm font-medium text-slate-700">
+                Power Line Frequency
+              </label>
+              {detectedRegion && (
+                <span className="text-xs text-green-600 flex items-center gap-1">
+                  <svg
+                    className="w-3 h-3"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M5 13l4 4L19 7"
+                    />
+                  </svg>
+                  Auto-detected: {detectedRegion}
+                </span>
+              )}
+            </div>
             <div className="grid grid-cols-2 gap-3">
               <button
                 type="button"
@@ -406,9 +469,7 @@ const App = () => {
                 } ${isProcessing ? "opacity-60 cursor-not-allowed" : ""}`}
               >
                 <div className="font-semibold">50 Hz</div>
-                <div className="text-xs mt-0.5 opacity-75">
-                  Europe, Asia, Africa
-                </div>
+                <div className="text-xs mt-0.5 opacity-75">Most of world</div>
               </button>
               <button
                 type="button"
@@ -421,9 +482,15 @@ const App = () => {
                 } ${isProcessing ? "opacity-60 cursor-not-allowed" : ""}`}
               >
                 <div className="font-semibold">60 Hz</div>
-                <div className="text-xs mt-0.5 opacity-75">Americas, Japan</div>
+                <div className="text-xs mt-0.5 opacity-75">
+                  Americas, Philippines, Japan
+                </div>
               </button>
             </div>
+            <p className="text-xs text-slate-500 mt-2">
+              Don't know? We've auto-detected your region. You can change it if
+              needed.
+            </p>
           </div>
 
           {/* Process Button */}
