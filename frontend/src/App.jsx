@@ -351,21 +351,97 @@ const App = () => {
 
   return (
     <div className="min-h-screen bg-neutral-50">
-      {/* Clean Glass Header */}
-      <header className="backdrop-blur-md bg-white/60 border-b border-neutral-200/50 sticky top-0 z-50">
-        <div className="container mx-auto px-6 py-5">
-          <h1 className="text-2xl font-semibold text-neutral-900">
+      {/* Simple Clean Header */}
+      <header className="pt-6 pb-4 sm:pt-8">
+        <div className="container mx-auto px-4 sm:px-6 max-w-3xl text-center">
+          <h1 className="text-2xl sm:text-3xl font-bold text-neutral-900 mb-2">
             Audio Hum Remover
           </h1>
-          <p className="text-sm text-neutral-600 mt-1">
+          <p className="text-xs sm:text-sm text-neutral-600">
             Remove power line interference from your recordings
           </p>
         </div>
       </header>
 
-      <div className="container mx-auto px-6 py-8 max-w-3xl">
+      <div className="container mx-auto px-4 sm:px-6 py-4 max-w-3xl">
+        {/* How to Use - Simple Steps */}
+        <div className="backdrop-blur-lg bg-white/70 rounded-2xl shadow-lg border border-neutral-200/60 p-5 sm:p-6 mb-6">
+          <h2 className="text-sm font-semibold text-neutral-700 mb-4">
+            How to Use
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="flex items-start gap-3">
+              <div className="w-8 h-8 bg-neutral-800 text-white rounded-lg flex items-center justify-center flex-shrink-0 font-bold text-sm">
+                1
+              </div>
+              <div>
+                <p className="text-sm font-medium text-neutral-900">
+                  Upload Audio
+                </p>
+                <p className="text-xs text-neutral-600 mt-0.5">
+                  Drop or select your audio file
+                </p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3">
+              <div className="w-8 h-8 bg-neutral-800 text-white rounded-lg flex items-center justify-center flex-shrink-0 font-bold text-sm">
+                2
+              </div>
+              <div>
+                <p className="text-sm font-medium text-neutral-900">
+                  Auto-Detect
+                </p>
+                <p className="text-xs text-neutral-600 mt-0.5">
+                  We identify the hum frequency
+                </p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3">
+              <div className="w-8 h-8 bg-neutral-800 text-white rounded-lg flex items-center justify-center flex-shrink-0 font-bold text-sm">
+                3
+              </div>
+              <div>
+                <p className="text-sm font-medium text-neutral-900">
+                  Process & Download
+                </p>
+                <p className="text-xs text-neutral-600 mt-0.5">
+                  Get your clean audio file
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* How It Works - Process Explanation */}
+        <div className="backdrop-blur-lg bg-white/70 rounded-2xl shadow-lg border border-neutral-200/60 p-5 sm:p-6 mb-6">
+          <h2 className="text-sm font-semibold text-neutral-700 mb-3">
+            How The Cleaning Process Works
+          </h2>
+          <div className="space-y-3 text-sm text-neutral-600">
+            <p className="leading-relaxed">
+              Power lines create electrical interference at specific frequencies
+              (50 Hz or 60 Hz depending on your region). This interference
+              appears in your recordings as an annoying background hum.
+            </p>
+            <p className="leading-relaxed">
+              Our tool identifies this hum frequency in your audio and applies a
+              specialized filter called a{" "}
+              <span className="font-medium text-neutral-800">notch filter</span>
+              . Think of it like noise-canceling headphones, but for recorded
+              audio.
+            </p>
+            <p className="leading-relaxed">
+              The filter removes the hum frequency and its{" "}
+              <span className="font-medium text-neutral-800">harmonics</span>{" "}
+              (multiples of the main frequency like 100 Hz, 150 Hz, etc.) while
+              preserving your voice or music. The result is clean,
+              professional-sounding audio without the electrical buzz.
+            </p>
+          </div>
+        </div>
+
         {/* Main Card - Clean Glass */}
-        <div className="backdrop-blur-lg bg-white/70 rounded-2xl shadow-lg border border-neutral-200/60 p-8 mb-6 relative overflow-hidden">
+        <div className="backdrop-blur-lg bg-white/70 rounded-2xl shadow-lg border border-neutral-200/60 p-5 sm:p-8 mb-6 relative overflow-hidden">
           {/* Processing Overlay */}
           {isProcessing && (
             <div className="absolute inset-0 bg-white/95 backdrop-blur-md z-20 flex items-center justify-center rounded-2xl">
@@ -619,11 +695,11 @@ const App = () => {
 
         {/* Results */}
         {(originalAudioUrl || processedAudioUrl) && (
-          <div className="backdrop-blur-lg bg-white/70 rounded-2xl shadow-lg border border-neutral-200/60 p-8">
+          <div className="backdrop-blur-lg bg-white/70 rounded-2xl shadow-lg border border-neutral-200/60 p-5 sm:p-8">
             <h2 className="text-lg font-semibold text-neutral-900 mb-5">
               Audio Comparison
             </h2>
-            <div className="grid md:grid-cols-2 gap-5 mb-5">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5 mb-5">
               {originalAudioUrl && (
                 <div className="backdrop-blur-md bg-white/50 rounded-xl p-5 border border-neutral-200">
                   <div className="flex items-center justify-between mb-3">
@@ -708,7 +784,7 @@ const App = () => {
                 </div>
               )}
             </div>
-            <div className="flex gap-3">
+            <div className="flex flex-col sm:flex-row gap-3">
               <button
                 onClick={handleDownload}
                 className="flex-1 px-5 py-2.5 bg-neutral-800 text-white font-medium text-sm rounded-lg hover:bg-neutral-700 transition-colors"
@@ -717,7 +793,7 @@ const App = () => {
               </button>
               <button
                 onClick={handleReset}
-                className="px-5 py-2.5 backdrop-blur-md bg-white/50 text-neutral-700 font-medium text-sm rounded-lg border border-neutral-200 hover:bg-white/70 transition-colors"
+                className="sm:w-auto px-5 py-2.5 backdrop-blur-md bg-white/50 text-neutral-700 font-medium text-sm rounded-lg border border-neutral-200 hover:bg-white/70 transition-colors"
               >
                 Reset
               </button>
@@ -725,6 +801,25 @@ const App = () => {
           </div>
         )}
       </div>
+
+      {/* Footer */}
+      <footer className="py-8 sm:py-12 mt-8 border-t border-neutral-200/50">
+        <div className="container mx-auto px-4 sm:px-6 max-w-3xl text-center">
+          <div className="flex flex-wrap justify-center gap-x-4 gap-y-1">
+            <span className="text-sm font-medium text-neutral-700">
+              Dan Lius Monsales
+            </span>
+            <span className="text-neutral-300">•</span>
+            <span className="text-sm font-medium text-neutral-700">
+              Eduardo Miguel Cortes
+            </span>
+            <span className="text-neutral-300">•</span>
+            <span className="text-sm font-medium text-neutral-700">
+              Regine Christian Buenafe
+            </span>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 };
