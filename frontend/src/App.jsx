@@ -16,14 +16,15 @@ const App = () => {
   const abortControllerRef = useRef(null);
   const fileInputRef = useRef(null);
 
-  // Cleanup URLs on unmount to prevent memory leaks
+  // Cleanup on unmount only
   useEffect(() => {
     return () => {
-      if (originalAudioUrl) URL.revokeObjectURL(originalAudioUrl);
-      if (processedAudioUrl) URL.revokeObjectURL(processedAudioUrl);
-      if (abortControllerRef.current) abortControllerRef.current.abort();
+      // Clean up on component unmount
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
     };
-  }, [originalAudioUrl, processedAudioUrl]);
+  }, []);
 
   // Auto-clear messages after delay
   useEffect(() => {
@@ -77,14 +78,18 @@ const App = () => {
           // Validate file
           validateFile(file);
 
-          // Revoke previous URLs to prevent memory leak
-          if (originalAudioUrl) URL.revokeObjectURL(originalAudioUrl);
-          if (processedAudioUrl) URL.revokeObjectURL(processedAudioUrl);
-
           setSelectedFile(file);
           setError(null);
           setSuccessMessage(null);
           setUploadProgress(0);
+
+          // Revoke old URLs before creating new ones
+          if (originalAudioUrl) {
+            URL.revokeObjectURL(originalAudioUrl);
+          }
+          if (processedAudioUrl) {
+            URL.revokeObjectURL(processedAudioUrl);
+          }
 
           // Create URL for original audio preview
           const url = URL.createObjectURL(file);
@@ -99,6 +104,11 @@ const App = () => {
         } catch (err) {
           setError(err.message);
           setSelectedFile(null);
+
+          // Revoke URL on error
+          if (originalAudioUrl) {
+            URL.revokeObjectURL(originalAudioUrl);
+          }
           setOriginalAudioUrl(null);
 
           // Reset file input
@@ -164,8 +174,10 @@ const App = () => {
 
       const data = await response.json();
 
-      // Revoke old processed URL before creating new one
-      if (processedAudioUrl) URL.revokeObjectURL(processedAudioUrl);
+      // Revoke ONLY old processed URL (keep original URL intact)
+      if (processedAudioUrl) {
+        URL.revokeObjectURL(processedAudioUrl);
+      }
 
       // Convert base64 to blob URL for audio player
       const audioBlob = base64ToBlob(data.processedAudio, "audio/wav");
@@ -174,6 +186,8 @@ const App = () => {
       setProcessedAudioUrl(audioUrl);
       setProcessedAudioData(data.processedAudio);
       setSuccessMessage(data.message || "Audio processed successfully!");
+
+      // DON'T revoke originalAudioUrl - we need it for playback!
     } catch (err) {
       if (err.name === "AbortError") {
         setError(
@@ -251,9 +265,13 @@ const App = () => {
       abortControllerRef.current.abort();
     }
 
-    // Clean up URLs to prevent memory leaks
-    if (originalAudioUrl) URL.revokeObjectURL(originalAudioUrl);
-    if (processedAudioUrl) URL.revokeObjectURL(processedAudioUrl);
+    // Clean up ALL URLs when resetting
+    if (originalAudioUrl) {
+      URL.revokeObjectURL(originalAudioUrl);
+    }
+    if (processedAudioUrl) {
+      URL.revokeObjectURL(processedAudioUrl);
+    }
 
     setSelectedFile(null);
     setOriginalAudioUrl(null);
@@ -593,68 +611,93 @@ const App = () => {
               Results
             </h2>
 
-            <div className="grid md:grid-cols-2 gap-4 mb-4">
+            <div className="grid md:grid-cols-2 gap-5 mb-4">
               {/* Original Audio */}
               {originalAudioUrl && (
-                <div className="border border-slate-200 rounded p-4 bg-slate-50">
-                  <div className="flex items-center gap-2 mb-3">
-                    <svg
-                      className="w-4 h-4 text-slate-600"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"
-                      />
-                    </svg>
-                    <h3 className="text-sm font-medium text-slate-900">
-                      Original
-                    </h3>
+                <div className="bg-slate-50 border border-slate-200 rounded-lg p-5">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-slate-900 rounded-lg flex items-center justify-center">
+                        <svg
+                          className="w-5 h-5 text-white"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"
+                          />
+                        </svg>
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-semibold text-slate-900">
+                          Original
+                        </h3>
+                        <p className="text-xs text-slate-500">
+                          With interference
+                        </p>
+                      </div>
+                    </div>
+                    <span className="px-2.5 py-1 bg-red-100 text-red-700 text-xs font-medium rounded-md">
+                      {humFrequency} Hz
+                    </span>
                   </div>
-                  <audio
-                    controls
-                    src={originalAudioUrl}
-                    className="w-full h-9"
-                  />
-                  <p className="text-xs text-slate-600 mt-2">
-                    <span className="font-medium">With hum:</span> Contains{" "}
-                    {humFrequency} Hz interference
+
+                  <div className="mb-3">
+                    <audio controls src={originalAudioUrl} className="w-full" />
+                  </div>
+
+                  <p className="text-xs text-slate-600">
+                    {selectedFile?.name} • Contains power line hum
                   </p>
                 </div>
               )}
 
               {/* Processed Audio */}
               {processedAudioUrl && (
-                <div className="border border-slate-200 rounded p-4 bg-slate-50">
-                  <div className="flex items-center gap-2 mb-3">
-                    <svg
-                      className="w-4 h-4 text-green-600"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                      />
-                    </svg>
-                    <h3 className="text-sm font-medium text-slate-900">
-                      Processed
-                    </h3>
+                <div className="bg-green-50 border border-green-200 rounded-lg p-5">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-green-600 rounded-lg flex items-center justify-center">
+                        <svg
+                          className="w-5 h-5 text-white"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                          />
+                        </svg>
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-semibold text-slate-900">
+                          Processed
+                        </h3>
+                        <p className="text-xs text-slate-500">Hum removed</p>
+                      </div>
+                    </div>
+                    <span className="px-2.5 py-1 bg-green-600 text-white text-xs font-medium rounded-md">
+                      Clean
+                    </span>
                   </div>
-                  <audio
-                    controls
-                    src={processedAudioUrl}
-                    className="w-full h-9"
-                  />
-                  <p className="text-xs text-green-600 mt-2">
-                    <span className="font-medium">Clean:</span> Hum filtered out
+
+                  <div className="mb-3">
+                    <audio
+                      controls
+                      src={processedAudioUrl}
+                      className="w-full"
+                    />
+                  </div>
+
+                  <p className="text-xs text-green-700">
+                    Filtered {humFrequency} Hz + harmonics • Ready to download
                   </p>
                 </div>
               )}

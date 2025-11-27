@@ -66,3 +66,8 @@ html {
   outline: 2px solid #3b82f6;
   outline-offset: 2px;
 }
+
+/* Simple audio player styling - let native controls shine */
+audio {
+  outline: none;
+}
