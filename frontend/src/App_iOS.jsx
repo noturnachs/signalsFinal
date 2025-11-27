@@ -3,7 +3,7 @@ import { useState, useCallback, useEffect, useRef } from "react";
 const App = () => {
   // State management
   const [selectedFile, setSelectedFile] = useState(null);
-  const [humFrequency, setHumFrequency] = useState("auto");
+  const [humFrequency, setHumFrequency] = useState(60);
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState(null);
   const [originalAudioUrl, setOriginalAudioUrl] = useState(null);
@@ -12,7 +12,6 @@ const App = () => {
   const [successMessage, setSuccessMessage] = useState(null);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [detectedRegion, setDetectedRegion] = useState(null);
-  const [detectedHumFrequency, setDetectedHumFrequency] = useState(null);
 
   // Auto-detect power frequency based on timezone/location
   useEffect(() => {
@@ -40,12 +39,12 @@ const App = () => {
       const is60Hz = hz60Regions.some((region) => timezone.startsWith(region));
 
       if (is60Hz) {
+        setHumFrequency(60);
         setDetectedRegion("60 Hz");
       } else {
+        setHumFrequency(50);
         setDetectedRegion("50 Hz");
       }
-      // Keep auto as default
-      setHumFrequency("auto");
     };
 
     detectFrequency();
@@ -139,56 +138,6 @@ const App = () => {
     setHumFrequency(freq);
   }, []);
 
-  // Handle drag and drop
-  const handleDragOver = useCallback((e) => {
-    e.preventDefault();
-    e.stopPropagation();
-  }, []);
-
-  const handleDragEnter = useCallback((e) => {
-    e.preventDefault();
-    e.stopPropagation();
-  }, []);
-
-  const handleDragLeave = useCallback((e) => {
-    e.preventDefault();
-    e.stopPropagation();
-  }, []);
-
-  const handleDrop = useCallback(
-    (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-
-      const files = e.dataTransfer.files;
-      if (files && files.length > 0) {
-        const file = files[0];
-        try {
-          validateFile(file);
-          setSelectedFile(file);
-          setError(null);
-          setSuccessMessage(null);
-          setUploadProgress(0);
-
-          if (originalAudioUrl) URL.revokeObjectURL(originalAudioUrl);
-          if (processedAudioUrl) URL.revokeObjectURL(processedAudioUrl);
-
-          const url = URL.createObjectURL(file);
-          setOriginalAudioUrl(url);
-          setProcessedAudioUrl(null);
-          setProcessedAudioData(null);
-          setSuccessMessage(`File "${file.name}" loaded successfully`);
-        } catch (err) {
-          setError(err.message);
-          setSelectedFile(null);
-          if (originalAudioUrl) URL.revokeObjectURL(originalAudioUrl);
-          setOriginalAudioUrl(null);
-        }
-      }
-    },
-    [originalAudioUrl, processedAudioUrl]
-  );
-
   const base64ToBlob = (base64, mimeType) => {
     const byteCharacters = atob(base64);
     const byteNumbers = new Array(byteCharacters.length);
@@ -215,7 +164,7 @@ const App = () => {
 
     try {
       const formData = new FormData();
-      formData.append("file", selectedFile);
+      formData.append("audio", selectedFile);
       formData.append("humFrequency", humFrequency);
 
       const response = await fetch("http://localhost:5000/api/process-audio", {
@@ -240,7 +189,6 @@ const App = () => {
 
       setProcessedAudioUrl(audioUrl);
       setProcessedAudioData(data.processedAudio);
-      setDetectedHumFrequency(data.detectedFrequency || data.humFrequency);
       setSuccessMessage(data.message || "Audio processed successfully!");
       setUploadProgress(100);
     } catch (err) {
@@ -289,8 +237,7 @@ const App = () => {
     setProcessedAudioData(null);
     setError(null);
     setSuccessMessage(null);
-    setHumFrequency("auto");
-    setDetectedHumFrequency(null);
+    setHumFrequency(60);
     setIsProcessing(false);
     setUploadProgress(0);
 
@@ -298,34 +245,37 @@ const App = () => {
   }, [originalAudioUrl, processedAudioUrl]);
 
   return (
-    <div className="min-h-screen bg-neutral-50">
-      {/* Clean Glass Header */}
-      <header className="backdrop-blur-md bg-white/60 border-b border-neutral-200/50 sticky top-0 z-50">
-        <div className="container mx-auto px-6 py-5">
-          <h1 className="text-2xl font-semibold text-neutral-900">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
+      {/* iOS Style Header */}
+      <header className="backdrop-blur-xl bg-white/70 border-b border-white/20 shadow-sm sticky top-0 z-50">
+        <div className="container mx-auto px-6 py-6">
+          <h1 className="text-3xl font-bold text-slate-900 tracking-tight">
             Audio Hum Remover
           </h1>
-          <p className="text-sm text-neutral-600 mt-1">
+          <p className="text-sm text-slate-600 mt-1.5 font-medium">
             Remove power line interference from your recordings
           </p>
         </div>
       </header>
 
-      <div className="container mx-auto px-6 py-8 max-w-3xl">
-        {/* Main Card - Clean Glass */}
-        <div className="backdrop-blur-lg bg-white/70 rounded-2xl shadow-lg border border-neutral-200/60 p-8 mb-6 relative overflow-hidden">
+      <div className="container mx-auto px-6 py-8 max-w-4xl">
+        {/* Main Card - iOS Frosted Glass Style */}
+        <div className="backdrop-blur-2xl bg-white/80 rounded-[32px] shadow-2xl border border-white/40 p-8 mb-6 relative overflow-hidden">
+          {/* Subtle gradient overlay */}
+          <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 via-purple-500/5 to-pink-500/5 pointer-events-none" />
+
           {/* Processing Overlay */}
           {isProcessing && (
-            <div className="absolute inset-0 bg-white/95 backdrop-blur-md z-20 flex items-center justify-center rounded-2xl">
+            <div className="absolute inset-0 bg-white/90 backdrop-blur-xl z-20 flex items-center justify-center rounded-[32px]">
               <div className="text-center">
-                <div className="w-12 h-12 mx-auto mb-4 relative">
+                <div className="w-16 h-16 mx-auto mb-4 relative">
                   <svg
-                    className="animate-spin h-12 w-12 text-neutral-700"
+                    className="animate-spin h-16 w-16 text-blue-600"
                     fill="none"
                     viewBox="0 0 24 24"
                   >
                     <circle
-                      className="opacity-20"
+                      className="opacity-25"
                       cx="12"
                       cy="12"
                       r="10"
@@ -339,23 +289,23 @@ const App = () => {
                     />
                   </svg>
                 </div>
-                <p className="text-base font-medium text-neutral-900 mb-1">
+                <p className="text-lg font-semibold text-slate-900 mb-2">
                   Processing Audio
                 </p>
-                <p className="text-sm text-neutral-600">
+                <p className="text-sm text-slate-600">
                   Removing {humFrequency} Hz interference...
                 </p>
                 {uploadProgress > 0 && (
-                  <div className="w-48 mx-auto mt-4 bg-neutral-200 rounded-full h-1.5">
+                  <div className="w-48 mx-auto mt-4 bg-slate-200 rounded-full h-2">
                     <div
-                      className="bg-neutral-800 h-1.5 rounded-full transition-all duration-300"
+                      className="bg-gradient-to-r from-blue-500 to-purple-600 h-2 rounded-full transition-all duration-300"
                       style={{ width: `${uploadProgress}%` }}
                     />
                   </div>
                 )}
                 <button
                   onClick={handleCancelProcessing}
-                  className="mt-5 px-4 py-2 text-sm font-medium text-neutral-700 bg-neutral-100 rounded-lg hover:bg-neutral-200 transition-colors"
+                  className="mt-6 px-5 py-2.5 text-sm font-semibold text-red-600 bg-red-50 rounded-full hover:bg-red-100 transition-colors active:scale-95"
                 >
                   Cancel
                 </button>
@@ -363,10 +313,10 @@ const App = () => {
             </div>
           )}
 
-          <div className="relative z-10 space-y-5">
+          <div className="relative z-10 space-y-6">
             {/* Upload Section */}
             <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-2">
+              <label className="block text-sm font-semibold text-slate-700 mb-3">
                 Audio File
               </label>
               <input
@@ -380,21 +330,17 @@ const App = () => {
               />
               <label
                 htmlFor="audio-upload"
-                onDragOver={handleDragOver}
-                onDragEnter={handleDragEnter}
-                onDragLeave={handleDragLeave}
-                onDrop={handleDrop}
-                className={`flex items-center justify-center w-full px-6 py-10 backdrop-blur-md bg-white/50 border-2 border-dashed rounded-xl cursor-pointer transition-all duration-200 ${
+                className={`flex items-center justify-center w-full px-6 py-12 bg-gradient-to-br from-white/90 to-white/70 backdrop-blur-xl border-2 border-dashed rounded-3xl cursor-pointer transition-all duration-300 ${
                   isProcessing
-                    ? "opacity-60 cursor-not-allowed border-neutral-300"
-                    : "border-neutral-300 hover:border-neutral-400 hover:bg-white/60"
+                    ? "opacity-60 cursor-not-allowed border-slate-300"
+                    : "border-slate-300 hover:border-blue-400 hover:shadow-xl hover:scale-[1.02] active:scale-[0.98]"
                 }`}
               >
                 {selectedFile ? (
-                  <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 bg-neutral-800 rounded-lg flex items-center justify-center">
+                  <div className="flex items-center gap-4">
+                    <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-[20px] flex items-center justify-center shadow-lg">
                       <svg
-                        className="w-6 h-6 text-white"
+                        className="w-8 h-8 text-white"
                         fill="none"
                         stroke="currentColor"
                         viewBox="0 0 24 24"
@@ -408,19 +354,19 @@ const App = () => {
                       </svg>
                     </div>
                     <div className="text-left">
-                      <p className="text-sm font-medium text-neutral-900">
+                      <p className="text-base font-semibold text-slate-900">
                         {selectedFile.name}
                       </p>
-                      <p className="text-xs text-neutral-600 mt-0.5">
+                      <p className="text-sm text-slate-600 mt-1">
                         {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
                       </p>
                     </div>
                   </div>
                 ) : (
                   <div className="text-center">
-                    <div className="w-14 h-14 mx-auto mb-3 bg-neutral-100 rounded-lg flex items-center justify-center">
+                    <div className="w-20 h-20 mx-auto mb-4 bg-gradient-to-br from-blue-100 to-purple-100 rounded-[24px] flex items-center justify-center">
                       <svg
-                        className="w-7 h-7 text-neutral-600"
+                        className="w-10 h-10 text-blue-600"
                         fill="none"
                         stroke="currentColor"
                         viewBox="0 0 24 24"
@@ -433,13 +379,13 @@ const App = () => {
                         />
                       </svg>
                     </div>
-                    <p className="text-sm font-medium text-neutral-700 mb-1">
+                    <p className="text-base font-semibold text-slate-700 mb-2">
                       Drop your audio file here
                     </p>
-                    <p className="text-xs text-neutral-500 mb-2">
+                    <p className="text-sm text-slate-500 mb-3">
                       or click to browse
                     </p>
-                    <p className="text-xs text-neutral-400">
+                    <p className="text-xs text-slate-400">
                       WAV, MP3, OGG, FLAC • Max 50MB
                     </p>
                   </div>
@@ -449,12 +395,12 @@ const App = () => {
 
             {/* Frequency Selection */}
             <div>
-              <div className="flex items-center justify-between mb-2">
-                <label className="text-sm font-medium text-neutral-700">
-                  Hum Frequency
+              <div className="flex items-center justify-between mb-3">
+                <label className="text-sm font-semibold text-slate-700">
+                  Power Line Frequency
                 </label>
-                {detectedHumFrequency && (
-                  <span className="text-xs text-green-600 flex items-center gap-1">
+                {detectedRegion && (
+                  <span className="text-xs text-green-600 flex items-center gap-1 bg-green-50 px-3 py-1.5 rounded-full font-medium">
                     <svg
                       className="w-3 h-3"
                       fill="none"
@@ -468,53 +414,50 @@ const App = () => {
                         d="M5 13l4 4L19 7"
                       />
                     </svg>
-                    Detected: {detectedHumFrequency} Hz
+                    {detectedRegion}
                   </span>
                 )}
               </div>
-              <div className="grid grid-cols-3 gap-3">
-                <button
-                  type="button"
-                  onClick={() => handleFrequencyChange("auto")}
-                  disabled={isProcessing}
-                  className={`px-3 py-4 rounded-lg font-medium transition-all duration-200 ${
-                    humFrequency === "auto"
-                      ? "bg-neutral-800 text-white"
-                      : "backdrop-blur-md bg-white/50 text-neutral-700 border border-neutral-200 hover:bg-white/70"
-                  } ${isProcessing ? "opacity-60 cursor-not-allowed" : ""}`}
-                >
-                  <div className="font-semibold text-base">Auto</div>
-                  <div className="text-xs mt-1 opacity-75">Detect</div>
-                </button>
+              <div className="grid grid-cols-2 gap-4">
                 <button
                   type="button"
                   onClick={() => handleFrequencyChange(50)}
                   disabled={isProcessing}
-                  className={`px-3 py-4 rounded-lg font-medium transition-all duration-200 ${
+                  className={`px-5 py-5 rounded-[20px] font-semibold transition-all duration-300 ${
                     humFrequency === 50
-                      ? "bg-neutral-800 text-white"
-                      : "backdrop-blur-md bg-white/50 text-neutral-700 border border-neutral-200 hover:bg-white/70"
-                  } ${isProcessing ? "opacity-60 cursor-not-allowed" : ""}`}
+                      ? "bg-gradient-to-br from-slate-800 to-slate-900 text-white shadow-2xl shadow-slate-900/40 scale-105"
+                      : "bg-white/80 backdrop-blur-xl text-slate-700 border-2 border-slate-200 hover:border-blue-300 hover:shadow-lg"
+                  } ${
+                    isProcessing
+                      ? "opacity-60 cursor-not-allowed"
+                      : "active:scale-95"
+                  }`}
                 >
-                  <div className="font-semibold text-base">50 Hz</div>
-                  <div className="text-xs mt-1 opacity-75">Europe/Asia</div>
+                  <div className="font-bold text-xl">50 Hz</div>
+                  <div className="text-xs mt-1.5 opacity-80">Most of world</div>
                 </button>
                 <button
                   type="button"
                   onClick={() => handleFrequencyChange(60)}
                   disabled={isProcessing}
-                  className={`px-3 py-4 rounded-lg font-medium transition-all duration-200 ${
+                  className={`px-5 py-5 rounded-[20px] font-semibold transition-all duration-300 ${
                     humFrequency === 60
-                      ? "bg-neutral-800 text-white"
-                      : "backdrop-blur-md bg-white/50 text-neutral-700 border border-neutral-200 hover:bg-white/70"
-                  } ${isProcessing ? "opacity-60 cursor-not-allowed" : ""}`}
+                      ? "bg-gradient-to-br from-slate-800 to-slate-900 text-white shadow-2xl shadow-slate-900/40 scale-105"
+                      : "bg-white/80 backdrop-blur-xl text-slate-700 border-2 border-slate-200 hover:border-blue-300 hover:shadow-lg"
+                  } ${
+                    isProcessing
+                      ? "opacity-60 cursor-not-allowed"
+                      : "active:scale-95"
+                  }`}
                 >
-                  <div className="font-semibold text-base">60 Hz</div>
-                  <div className="text-xs mt-1 opacity-75">Americas</div>
+                  <div className="font-bold text-xl">60 Hz</div>
+                  <div className="text-xs mt-1.5 opacity-80">
+                    Americas, Philippines, Japan
+                  </div>
                 </button>
               </div>
-              <p className="text-xs text-neutral-500 mt-2 text-center">
-                Auto mode detects hum frequency automatically
+              <p className="text-xs text-slate-500 mt-3 text-center font-medium">
+                Auto-detected based on your region
               </p>
             </div>
 
@@ -522,20 +465,22 @@ const App = () => {
             <button
               onClick={handleProcessAudio}
               disabled={!selectedFile || isProcessing}
-              className="w-full px-6 py-3 bg-neutral-800 text-white font-medium text-sm rounded-lg hover:bg-neutral-700 disabled:bg-neutral-300 disabled:cursor-not-allowed transition-colors duration-200"
+              className="w-full px-6 py-4 bg-gradient-to-r from-blue-500 to-purple-600 text-white font-bold text-base rounded-[20px] hover:shadow-2xl hover:shadow-blue-500/50 disabled:from-slate-300 disabled:to-slate-400 disabled:cursor-not-allowed disabled:shadow-none transition-all duration-300 active:scale-95"
             >
               {isProcessing ? "Processing..." : "Process Audio"}
             </button>
 
             {/* Messages */}
             {error && (
-              <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
-                <p className="text-sm text-red-700">{error}</p>
+              <div className="p-4 bg-red-50 border border-red-200 rounded-2xl">
+                <p className="text-sm text-red-700 font-medium">{error}</p>
               </div>
             )}
             {successMessage && (
-              <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
-                <p className="text-sm text-green-700">{successMessage}</p>
+              <div className="p-4 bg-green-50 border border-green-200 rounded-2xl">
+                <p className="text-sm text-green-700 font-medium">
+                  {successMessage}
+                </p>
               </div>
             )}
           </div>
@@ -543,18 +488,18 @@ const App = () => {
 
         {/* Results */}
         {(originalAudioUrl || processedAudioUrl) && (
-          <div className="backdrop-blur-lg bg-white/70 rounded-2xl shadow-lg border border-neutral-200/60 p-8">
-            <h2 className="text-lg font-semibold text-neutral-900 mb-5">
+          <div className="backdrop-blur-2xl bg-white/80 rounded-[32px] shadow-2xl border border-white/40 p-8">
+            <h2 className="text-xl font-bold text-slate-900 mb-6">
               Audio Comparison
             </h2>
-            <div className="grid md:grid-cols-2 gap-5 mb-5">
+            <div className="grid md:grid-cols-2 gap-6 mb-6">
               {originalAudioUrl && (
-                <div className="backdrop-blur-md bg-white/50 rounded-xl p-5 border border-neutral-200">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-2">
-                      <div className="w-9 h-9 bg-neutral-800 rounded-lg flex items-center justify-center">
+                <div className="bg-gradient-to-br from-slate-50 to-slate-100 rounded-[24px] p-6 border border-slate-200">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 bg-slate-900 rounded-[16px] flex items-center justify-center">
                         <svg
-                          className="w-5 h-5 text-white"
+                          className="w-6 h-6 text-white"
                           fill="none"
                           stroke="currentColor"
                           viewBox="0 0 24 24"
@@ -568,35 +513,35 @@ const App = () => {
                         </svg>
                       </div>
                       <div>
-                        <h3 className="text-sm font-medium text-neutral-900">
+                        <h3 className="text-sm font-bold text-slate-900">
                           Original
                         </h3>
-                        <p className="text-xs text-neutral-500">
+                        <p className="text-xs text-slate-500">
                           With interference
                         </p>
                       </div>
                     </div>
-                    <span className="px-2 py-0.5 bg-neutral-800 text-white text-xs font-medium rounded">
-                      {detectedHumFrequency || humFrequency} Hz
+                    <span className="px-3 py-1 bg-red-100 text-red-700 text-xs font-bold rounded-full">
+                      {humFrequency} Hz
                     </span>
                   </div>
                   <audio
                     controls
                     src={originalAudioUrl}
-                    className="w-full mb-2"
+                    className="w-full mb-3"
                   />
-                  <p className="text-xs text-neutral-600">
+                  <p className="text-xs text-slate-600 font-medium">
                     {selectedFile?.name}
                   </p>
                 </div>
               )}
               {processedAudioUrl && (
-                <div className="backdrop-blur-md bg-white/50 rounded-xl p-5 border border-neutral-200">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-2">
-                      <div className="w-9 h-9 bg-neutral-800 rounded-lg flex items-center justify-center">
+                <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-[24px] p-6 border border-green-200">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 bg-green-600 rounded-[16px] flex items-center justify-center">
                         <svg
-                          className="w-5 h-5 text-white"
+                          className="w-6 h-6 text-white"
                           fill="none"
                           stroke="currentColor"
                           viewBox="0 0 24 24"
@@ -610,24 +555,23 @@ const App = () => {
                         </svg>
                       </div>
                       <div>
-                        <h3 className="text-sm font-medium text-neutral-900">
+                        <h3 className="text-sm font-bold text-slate-900">
                           Processed
                         </h3>
-                        <p className="text-xs text-neutral-500">Hum removed</p>
+                        <p className="text-xs text-slate-500">Hum removed</p>
                       </div>
                     </div>
-                    <span className="px-2 py-0.5 bg-neutral-800 text-white text-xs font-medium rounded">
+                    <span className="px-3 py-1 bg-green-600 text-white text-xs font-bold rounded-full">
                       Clean
                     </span>
                   </div>
                   <audio
                     controls
                     src={processedAudioUrl}
-                    className="w-full mb-2"
+                    className="w-full mb-3"
                   />
-                  <p className="text-xs text-neutral-600">
-                    Filtered {detectedHumFrequency || humFrequency} Hz +
-                    harmonics
+                  <p className="text-xs text-green-700 font-medium">
+                    Filtered {humFrequency} Hz + harmonics
                   </p>
                 </div>
               )}
@@ -635,13 +579,13 @@ const App = () => {
             <div className="flex gap-3">
               <button
                 onClick={handleDownload}
-                className="flex-1 px-5 py-2.5 bg-neutral-800 text-white font-medium text-sm rounded-lg hover:bg-neutral-700 transition-colors"
+                className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white font-semibold rounded-[16px] hover:shadow-xl transition-all active:scale-95"
               >
                 Download Clean Audio
               </button>
               <button
                 onClick={handleReset}
-                className="px-5 py-2.5 backdrop-blur-md bg-white/50 text-neutral-700 font-medium text-sm rounded-lg border border-neutral-200 hover:bg-white/70 transition-colors"
+                className="px-6 py-3 bg-white/80 backdrop-blur-xl text-slate-700 font-semibold rounded-[16px] border-2 border-slate-200 hover:border-slate-300 hover:shadow-lg transition-all active:scale-95"
               >
                 Reset
               </button>

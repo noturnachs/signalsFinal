@@ -7,6 +7,7 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 import numpy as np
 from scipy import signal
+from scipy.fft import rfft, rfftfreq
 from scipy.io import wavfile
 import io
 import base64
@@ -110,6 +111,66 @@ def apply_notch_filter(audio_data, b, a):
         return filtered_data
 
 
+def detect_hum_frequency(audio_data, sample_rate):
+    """
+    Detect if 50Hz or 60Hz hum is present in the audio.
+    Returns the detected frequency (50 or 60) or None if neither is detected.
+    """
+    # Use first 2 seconds of audio for analysis (or entire file if shorter)
+    analysis_samples = min(len(audio_data), sample_rate * 2)
+    
+    # If stereo, analyze first channel
+    if len(audio_data.shape) == 2:
+        audio_segment = audio_data[:analysis_samples, 0]
+    else:
+        audio_segment = audio_data[:analysis_samples]
+    
+    # Compute FFT
+    fft_values = rfft(audio_segment)
+    fft_freqs = rfftfreq(len(audio_segment), 1/sample_rate)
+    
+    # Get magnitude spectrum
+    magnitude = np.abs(fft_values)
+    
+    # Define frequency ranges to check (±2 Hz around target frequencies)
+    freq_50_range = (48, 52)
+    freq_60_range = (58, 62)
+    
+    # Find indices for 50Hz and 60Hz ranges
+    idx_50 = np.where((fft_freqs >= freq_50_range[0]) & (fft_freqs <= freq_50_range[1]))[0]
+    idx_60 = np.where((fft_freqs >= freq_60_range[0]) & (fft_freqs <= freq_60_range[1]))[0]
+    
+    # Get peak magnitudes in each range
+    if len(idx_50) > 0:
+        peak_50 = np.max(magnitude[idx_50])
+    else:
+        peak_50 = 0
+    
+    if len(idx_60) > 0:
+        peak_60 = np.max(magnitude[idx_60])
+    else:
+        peak_60 = 0
+    
+    # Get average magnitude for comparison (excluding DC component)
+    avg_magnitude = np.mean(magnitude[1:])
+    
+    # Define threshold: peak should be at least 3x the average magnitude
+    threshold = avg_magnitude * 3
+    
+    print(f"Hum detection - 50Hz peak: {peak_50:.2f}, 60Hz peak: {peak_60:.2f}, Threshold: {threshold:.2f}")
+    
+    # Determine which frequency has stronger hum
+    if peak_50 > threshold or peak_60 > threshold:
+        if peak_50 > peak_60:
+            print("Detected 50Hz hum")
+            return 50
+        else:
+            print("Detected 60Hz hum")
+            return 60
+    else:
+        print("No significant hum detected")
+        return None
+
 def remove_hum(audio_data, sample_rate, hum_freq=60, quality_factor=30):
     """
     Remove power line hum and its harmonics from audio efficiently.
@@ -202,10 +263,14 @@ def process_audio():
         if not is_allowed_file(file.filename):
             return jsonify({'error': f'File type not supported. Allowed: {", ".join(ALLOWED_EXTENSIONS)}'}), 400
         
-        # Get hum frequency parameter
-        hum_frequency = int(request.form.get('humFrequency', DEFAULT_HUM_FREQUENCY))
-        if hum_frequency not in [50, 60]:
-            return jsonify({'error': 'Hum frequency must be 50 or 60 Hz'}), 400
+        # Get hum frequency parameter (can be "auto", 50, or 60)
+        hum_frequency_param = request.form.get('humFrequency', 'auto')
+        auto_detect = hum_frequency_param == 'auto'
+        
+        if not auto_detect:
+            hum_frequency = int(hum_frequency_param)
+            if hum_frequency not in [50, 60]:
+                return jsonify({'error': 'Hum frequency must be 50, 60, or "auto"'}), 400
         
         # Read file data
         file_data = file.read()
@@ -224,6 +289,20 @@ def process_audio():
             print(f"Loaded: shape={audio_data.shape}, sr={sample_rate}, dtype={audio_data.dtype}")
             print(f"Range: [{audio_data.min():.3f}, {audio_data.max():.3f}]")
         
+        # Auto-detect hum frequency if requested
+        detected_freq = None
+        if auto_detect:
+            detected_freq = detect_hum_frequency(audio_data, sample_rate)
+            if detected_freq:
+                hum_frequency = detected_freq
+                if DEBUG_MODE:
+                    print(f"Auto-detected hum frequency: {hum_frequency} Hz")
+            else:
+                # Default to 60 Hz if no hum detected
+                hum_frequency = DEFAULT_HUM_FREQUENCY
+                if DEBUG_MODE:
+                    print(f"No hum detected, defaulting to {hum_frequency} Hz")
+        
         # Process audio - remove hum using cascaded notch filters
         filtered_audio = remove_hum(
             audio_data, 
@@ -240,12 +319,23 @@ def process_audio():
         # Convert to base64
         base64_audio = save_audio_to_base64(filtered_audio, sample_rate)
         
+        # Build response message
+        if auto_detect:
+            if detected_freq:
+                message = f'Auto-detected and removed {hum_frequency} Hz hum and harmonics'
+            else:
+                message = f'No hum detected. Applied {hum_frequency} Hz filter as precaution'
+        else:
+            message = f'Successfully removed {hum_frequency} Hz hum and harmonics'
+        
         return jsonify({
             'success': True,
             'processedAudio': base64_audio,
             'sampleRate': int(sample_rate),
             'humFrequency': hum_frequency,
-            'message': f'Successfully removed {hum_frequency} Hz hum and harmonics'
+            'detectedFrequency': detected_freq if auto_detect else None,
+            'autoDetected': auto_detect,
+            'message': message
         })
     
     except Exception as e:

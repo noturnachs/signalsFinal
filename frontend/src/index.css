@@ -1,5 +1,9 @@
 @import "tailwindcss";
 
+* {
+  font-family: "Inter", sans-serif;
+}
+
 /* Custom animations for smooth UX */
 @keyframes fade-in {
   from {
