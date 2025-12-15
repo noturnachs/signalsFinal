@@ -7,6 +7,7 @@ const AudioPlayer = ({ src, variant = "default" }) => {
   const [volume, setVolume] = useState(1);
   const [showVolume, setShowVolume] = useState(false);
   const audioRef = useRef(null);
+  const volumeRef = useRef(null);
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -35,6 +36,23 @@ const AudioPlayer = ({ src, variant = "default" }) => {
       audio.removeEventListener("ended", handleEnded);
     };
   }, [src]);
+
+  // Click outside to close volume
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (volumeRef.current && !volumeRef.current.contains(event.target)) {
+        setShowVolume(false);
+      }
+    };
+
+    if (showVolume) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [showVolume]);
 
   const togglePlay = () => {
     const audio = audioRef.current;
@@ -147,12 +165,9 @@ const AudioPlayer = ({ src, variant = "default" }) => {
         </div>
 
         {/* Volume Control */}
-        <div
-          className="relative flex-shrink-0"
-          onMouseEnter={() => setShowVolume(true)}
-          onMouseLeave={() => setShowVolume(false)}
-        >
+        <div className="relative flex-shrink-0" ref={volumeRef}>
           <button
+            onClick={() => setShowVolume(!showVolume)}
             className={`${theme.text} w-8 h-8 flex items-center justify-center hover:bg-white/50 rounded-lg transition-colors`}
             aria-label="Volume"
           >
@@ -209,7 +224,7 @@ const AudioPlayer = ({ src, variant = "default" }) => {
 
           {/* Volume Slider */}
           {showVolume && (
-            <div className="absolute bottom-full right-0 mb-2 bg-white rounded-lg shadow-lg p-2 border border-neutral-200">
+            <div className="absolute bottom-full right-0 mb-2 bg-white rounded-lg shadow-lg p-3 border border-neutral-200 z-10">
               <input
                 type="range"
                 min="0"
@@ -217,7 +232,7 @@ const AudioPlayer = ({ src, variant = "default" }) => {
                 step="0.01"
                 value={volume}
                 onChange={handleVolumeChange}
-                className="w-20 h-1 accent-neutral-800"
+                className="w-20 h-1 accent-neutral-800 cursor-pointer"
                 style={{
                   writingMode: "bt-lr",
                   WebkitAppearance: "slider-vertical",
