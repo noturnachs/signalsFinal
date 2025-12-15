@@ -17,6 +17,7 @@ const App = () => {
   const [detectedRegion, setDetectedRegion] = useState(null);
   const [detectedHumFrequency, setDetectedHumFrequency] = useState(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
 
   // Auto-detect power frequency based on timezone/location
   useEffect(() => {
@@ -57,6 +58,7 @@ const App = () => {
 
   const abortControllerRef = useRef(null);
   const fileInputRef = useRef(null);
+  const dragCounterRef = useRef(0);
 
   useEffect(() => {
     return () => {
@@ -200,17 +202,27 @@ const App = () => {
   const handleDragEnter = useCallback((e) => {
     e.preventDefault();
     e.stopPropagation();
+    dragCounterRef.current++;
+    if (dragCounterRef.current === 1) {
+      setIsDragging(true);
+    }
   }, []);
 
   const handleDragLeave = useCallback((e) => {
     e.preventDefault();
     e.stopPropagation();
+    dragCounterRef.current--;
+    if (dragCounterRef.current === 0) {
+      setIsDragging(false);
+    }
   }, []);
 
   const handleDrop = useCallback(
     (e) => {
       e.preventDefault();
       e.stopPropagation();
+      dragCounterRef.current = 0;
+      setIsDragging(false);
 
       const files = e.dataTransfer.files;
       if (files && files.length > 0) {
@@ -354,15 +366,25 @@ const App = () => {
 
   return (
     <div className="min-h-screen bg-neutral-50">
-      {/* Simple Clean Header */}
-      <header className="pt-6 pb-4 sm:pt-8">
-        <div className="container mx-auto px-4 sm:px-6 max-w-3xl text-center">
-          <h1 className="text-2xl sm:text-3xl font-bold text-neutral-900 mb-2">
-            Audio Hum Remover
-          </h1>
-          <p className="text-xs sm:text-sm text-neutral-600">
-            Remove power line interference from your recordings
-          </p>
+      {/* Premium Header */}
+      <header className="pt-8 pb-6 sm:pt-12 sm:pb-8 border-b border-neutral-200/50">
+        <div className="container mx-auto px-4 sm:px-6 max-w-3xl">
+          <div className="flex flex-col items-center">
+            <div className="mb-4 p-4 bg-white border-2 border-neutral-200 rounded-2xl shadow-sm">
+              <img
+                src="/hum.svg"
+                alt="Audio Hum Remover"
+                className="w-12 h-12 sm:w-14 sm:h-14"
+              />
+            </div>
+            <h1 className="text-3xl sm:text-4xl font-bold text-neutral-900 mb-3 tracking-tight">
+              Audio Hum Remover
+            </h1>
+            <p className="text-sm sm:text-base text-neutral-600 font-medium max-w-md text-center">
+              Professional power line interference removal using advanced signal
+              processing
+            </p>
+          </div>
         </div>
       </header>
 
@@ -515,10 +537,12 @@ const App = () => {
                 onDragEnter={handleDragEnter}
                 onDragLeave={handleDragLeave}
                 onDrop={handleDrop}
-                className={`flex items-center justify-center w-full px-6 py-10 backdrop-blur-md bg-white/50 border-2 border-dashed rounded-xl cursor-pointer transition-all duration-200 ${
+                className={`flex items-center justify-center w-full px-6 py-10 backdrop-blur-md border-2 border-dashed rounded-xl cursor-pointer transition-all duration-200 ${
                   isProcessing
-                    ? "opacity-60 cursor-not-allowed border-neutral-300"
-                    : "border-neutral-300 hover:border-neutral-400 hover:bg-white/60"
+                    ? "opacity-60 cursor-not-allowed border-neutral-300 bg-white/50"
+                    : isDragging
+                    ? "border-neutral-800 bg-neutral-100 scale-[1.02] shadow-lg"
+                    : "border-neutral-300 hover:border-neutral-400 bg-white/50 hover:bg-white/60"
                 }`}
               >
                 {selectedFile ? (
